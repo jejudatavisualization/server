@@ -2,7 +2,7 @@ import requests
 from lxml import etree
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.database import WaterQuality, get_db
+from database import WaterQuality, get_db
 
 
 def parse_date(date_string):

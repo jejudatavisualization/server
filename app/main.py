@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Depends
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
-from app.database import get_db, WaterQuality
-from app.services.water_quality_crawler import fetch_water_quality_data
+from database import get_db, WaterQuality
+from services.water_quality_crawler import fetch_water_quality_data
 
 # from app.services.a_crawler import run_a_crawler, ACrawlerData
 # from app.services.b_crawler import run_b_crawler, BCrawlerData
