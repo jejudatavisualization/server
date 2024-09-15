@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from database import get_db, WaterQuality
@@ -9,6 +10,16 @@ from services.water_quality_crawler import fetch_water_quality_data
 # from app.services.c_crawler import run_c_crawler, CCrawlerData
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "*"
+    ],  # 모든 origin 허용 (프로덕션에서는 구체적인 origin을 지정하는 것이 좋습니다)
+    allow_credentials=True,
+    allow_methods=["*"],  # 모든 HTTP 메서드 허용
+    allow_headers=["*"],  # 모든 HTTP 헤더 허용
+)
 
 
 def run_crawler(crawler_func):
