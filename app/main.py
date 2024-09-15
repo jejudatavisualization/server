@@ -1,21 +1,18 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from database import get_db, WaterQuality
 from services.water_quality_crawler import fetch_water_quality_data
-
-# from app.services.a_crawler import run_a_crawler, ACrawlerData
-# from app.services.b_crawler import run_b_crawler, BCrawlerData
-# from app.services.c_crawler import run_c_crawler, CCrawlerData
+import os
+import csv
+import json
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*"
-    ],  # 모든 origin 허용 (프로덕션에서는 구체적인 origin을 지정하는 것이 좋습니다)
+    allow_origins=["*"],  # "http://jejudata.com/"으로 추후 변경
     allow_credentials=True,
     allow_methods=["*"],  # 모든 HTTP 메서드 허용
     allow_headers=["*"],  # 모든 HTTP 헤더 허용
@@ -31,43 +28,13 @@ def run_crawler(crawler_func):
 
 
 scheduler = BackgroundScheduler()
-# scheduler.add_job(lambda: run_crawler(run_a_crawler), "interval", minutes=1)
-# scheduler.add_job(lambda: run_crawler(run_b_crawler), "interval", minutes=5)
-# scheduler.add_job(lambda: run_crawler(run_c_crawler), "interval", minutes=30)
 scheduler.add_job(lambda: run_crawler(fetch_water_quality_data), "interval", hours=1)
 scheduler.start()
 
 
 @app.on_event("startup")
 async def startup_event():
-    # run_crawler(run_a_crawler)
-    # run_crawler(run_b_crawler)
-    # run_crawler(run_c_crawler)
     run_crawler(fetch_water_quality_data)
-
-
-# @app.get("/a")
-# async def get_a_data(db: Session = Depends(get_db)):
-#     data = (
-#         db.query(ACrawlerData).order_by(ACrawlerData.timestamp.desc()).limit(10).all()
-#     )
-#     return [{"timestamp": item.timestamp, "value": item.value} for item in data]
-
-
-# @app.get("/b")
-# async def get_b_data(db: Session = Depends(get_db)):
-#     data = (
-#         db.query(BCrawlerData).order_by(BCrawlerData.timestamp.desc()).limit(10).all()
-#     )
-#     return [{"timestamp": item.timestamp, "value": item.value} for item in data]
-
-
-# @app.get("/c")
-# async def get_c_data(db: Session = Depends(get_db)):
-#     data = (
-#         db.query(CCrawlerData).order_by(CCrawlerData.timestamp.desc()).limit(10).all()
-#     )
-#     return [{"timestamp": item.timestamp, "value": item.value} for item in data]
 
 
 @app.get("/water_quality")
@@ -92,6 +59,42 @@ async def get_water_quality_data(db: Session = Depends(get_db)):
         }
         for item in data
     ]
+
+
+# CSV 파일을 JSON으로 변환하는 함수
+def csv_to_json(csv_file_path):
+    encodings = ["utf-8", "cp949", "euc-kr"]
+    for encoding in encodings:
+        try:
+            with open(csv_file_path, "r", encoding=encoding) as csvfile:
+                csvreader = csv.DictReader(csvfile)
+                data = [row for row in csvreader]
+            return data
+        except UnicodeDecodeError:
+            continue
+    raise HTTPException(
+        status_code=500, detail="Unable to decode the file with available encodings"
+    )
+
+
+# 데이터 디렉토리 경로
+data_dir = os.path.join(os.path.dirname(__file__), "data")
+
+
+@app.get("/crime_data")
+async def get_crime_data():
+    file_path = os.path.join(data_dir, "crime.csv")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return csv_to_json(file_path)
+
+
+@app.get("/energy_data")
+async def get_energy_data():
+    file_path = os.path.join(data_dir, "energy_info.csv")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return csv_to_json(file_path)
 
 
 @app.on_event("shutdown")
